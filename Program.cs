@@ -87,14 +87,16 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-
 var app = builder.Build();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c=>
+{
+    c.SwaggerEndpoint("/swagger/v0/swagger.json", "API v0");
+});
 
 app.UseHttpsRedirection();
 

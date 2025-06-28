@@ -1,4 +1,6 @@
 ﻿using MySqlConnector;
+using System.Data.Common;
+using System.Transactions;
 
 namespace APIGW.Services.Eshop
 {
@@ -20,21 +22,45 @@ namespace APIGW.Services.Eshop
 
         public async Task UpdateAsync()
         {
-            string script = File.ReadAllText("SQL/UpdatePricelists.sql");
-            script = script.Replace("{prefix}", _prefix);
+            Logger.LogInformation("Starting pricelist update process");
 
-            var statements = script.Split(';')
-                                   .Select(s => s.Trim())
-                                   .Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
-
-            await using (var connection = new MySqlConnection(_connectionString))
+            try
             {
+                string script = File.ReadAllText("SQL/UpdatePricelists.sql");
+                script = script.Replace("{prefix}", _prefix);
+
+                var statements = script.Split(';')
+                                       .Select(s => s.Trim())
+                                       .Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+
+                await using var connection = new MySqlConnection(_connectionString);
                 await connection.OpenAsync();
-                foreach (var statement in statements)
+                await using var transaction = await connection.BeginTransactionAsync();
+
+                try
                 {
-                    await using var command = new MySqlCommand(statement, connection);
-                    await command.ExecuteNonQueryAsync();
+                    foreach (var statement in statements)
+                    {
+                        Logger.LogDebug("Executing SQL statement: {Statement}", statement);
+
+                        await using var command = new MySqlCommand(statement, connection, transaction);
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    await transaction.CommitAsync();
+                    Logger.LogInformation("Pricelist update completed successfully");
+
                 }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    Logger.LogError("Transaction rolled back due to error");
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to update pricelists");
+                throw;
             }
         }
     }
