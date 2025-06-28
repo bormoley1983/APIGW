@@ -1,0 +1,6 @@
+@APIGW_HostAddress = http://localhost:5050
+
+GET {{APIGW_HostAddress}}/
+Accept: application/json
+
+###
