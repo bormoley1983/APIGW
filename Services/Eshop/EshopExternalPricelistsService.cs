@@ -35,25 +35,26 @@ namespace APIGW.Services.Eshop
 
                 await using var connection = new MySqlConnection(_connectionString);
                 await connection.OpenAsync();
+
                 await using var transaction = await connection.BeginTransactionAsync();
 
                 try
                 {
                     foreach (var statement in statements)
                     {
-                        Logger.LogDebug("Executing SQL statement: {Statement}", statement);
+                        Logger.LogDebug($"Executing SQL statement: {statement} for db: {_prefix}");
 
                         await using var command = new MySqlCommand(statement, connection, transaction);
                         await command.ExecuteNonQueryAsync();
                     }
                     await transaction.CommitAsync();
-                    Logger.LogInformation("Pricelist update completed successfully");
+                    Logger.LogInformation($"Pricelist update completed successfully");
 
                 }
-                catch (Exception)
+                catch (Exception err)
                 {
                     await transaction.RollbackAsync();
-                    Logger.LogError("Transaction rolled back due to error");
+                    Logger.LogError(err, "Transaction rolled back");
                     throw;
                 }
             }

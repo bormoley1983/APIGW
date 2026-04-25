@@ -12,7 +12,9 @@ namespace APIGW.Controllers.Eshop
     {
         private readonly ILogger<EshopPricelistController> _logger;
         private readonly EshopExternalPricelistsService _pricelistsService;
-        
+
+        private record Response(bool Success, DateTime Timestamp, string Message);
+
         public EshopPricelistController(
             ILogger<EshopPricelistController> logger,
             EshopExternalPricelistsService pricelistsService)
@@ -39,31 +41,25 @@ namespace APIGW.Controllers.Eshop
             try
             {
                 await _pricelistsService.UpdateAsync();
-                var result = new
-                {
-                    success = true,
-                    timestamp = DateTime.Now,
-                    message = "Pricelist updated successfully",
-                };
 
                 _logger.LogInformation("Pricelist update completed successfully");
-                return Ok(result);
+                return Ok(new Response(true, DateTime.Now, "Pricelist updated successfully"));
 
             }
             catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Configuration error during pricelist update");
-                return BadRequest(new { error = "Configuration error", details = ex.Message });
+                return BadRequest(new Response(false, DateTime.Now, ex.Message));
             }
             catch (MySqlException ex)
             {
                 _logger.LogError(ex, "Database error during pricelist update");
-                return StatusCode(500, new { error = "Database error", details = "Internal server error" });
+                return StatusCode(500, new Response(false, DateTime.Now, ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error during pricelist update");
-                return StatusCode(500, new { error = "Internal server error" });
+                return StatusCode(500, new Response(false, DateTime.Now, ex.Message));
             }
         }
     }
